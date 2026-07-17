@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: opspilot-backend
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:///./opspilot.db
+      - key: CHROMA_DB_PATH
+        value: ./chroma_db
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: CHUNK_SIZE
+        value: 800
+      - key: CHUNK_OVERLAP
+        value: 100
+      - key: UPLOAD_DIRECTORY
+        value: ./uploads

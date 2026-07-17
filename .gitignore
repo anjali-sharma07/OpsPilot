@@ -1,0 +1,48 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite3
+
+# ChromaDB / vector stores
+chroma/
+chromadb/
+vector_db/
+data/chroma/
+data/chroma_db/
+
+# Uploaded documents
+uploads/
+
+# Frontend / Node.js
+node_modules/
+dist/
+build/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
