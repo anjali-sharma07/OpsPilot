@@ -27,6 +27,7 @@ chromadb/
 vector_db/
 data/chroma/
 data/chroma_db/
+chroma_db/
 
 # Uploaded documents
 uploads/
