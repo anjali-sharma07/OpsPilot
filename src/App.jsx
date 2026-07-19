@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+// Single source of truth for the backend URL.
+// Set VITE_API_URL in Vercel project settings (Production) and .env (local).
+// Falls back to '' so the Vite dev proxy transparently forwards /upload, /chat.
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 
 function App() {
@@ -32,16 +35,18 @@ function App() {
         files.map((file) => {
           const formData = new FormData();
           formData.append('file', file);
-          return axios.post(`${API_BASE}/upload`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          // Do NOT set Content-Type manually — axios must generate the
+          // multipart boundary automatically. A hardcoded value omits the
+          // boundary parameter and causes the server to reject the request.
+          return axios.post(`${API_BASE}/upload`, formData);
         })
       );
 
       const uploadedNames = uploadResults.map((response) => response.data.filename);
       setDocuments((prev) => [...prev, ...uploadedNames.filter((name) => !prev.includes(name))]);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Upload failed.');
+      // Backend returns { error: { code, message } } — not { detail }.
+      setError(err.response?.data?.error?.message || 'Upload failed.');
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -71,7 +76,7 @@ function App() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Unable to get answer.');
+      setError(err.response?.data?.error?.message || 'Unable to get answer.');
     } finally {
       setLoadingAnswer(false);
     }

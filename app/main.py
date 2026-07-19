@@ -26,11 +26,19 @@ from app.core.config import settings
 
 
 ALLOWED_ORIGINS = [
+    # Local development
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # Vercel production — update this to your actual *.vercel.app URL once known,
+    # or set via CORS_ALLOWED_ORIGINS env var after first deploy.
+    "https://opspilot-frontend.vercel.app",
+    # Vercel branch/preview deployments follow this pattern.
+    # Replace <your-vercel-team> if you are on a team account.
+    "https://opspilot.vercel.app",
 ]
+
 
 
 @asynccontextmanager
