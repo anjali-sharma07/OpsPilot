@@ -11,12 +11,16 @@ is actually requested.
 
 from __future__ import annotations
 
+import logging
+import time
 from functools import cached_property
 from pathlib import Path
 from typing import Any
 
 from app.api.utils import APIError
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
@@ -38,13 +42,15 @@ class EmbeddingService:
     @cached_property
     def _client(self):
         """ChromaDB PersistentClient — created on first access."""
-        # Import deferred so `chromadb` (which loads DuckDB / sqlite3 on
-        # import) is not in the startup path.
         import chromadb
 
         self._persist_directory.mkdir(parents=True, exist_ok=True)
+        logger.info("Initialising ChromaDB PersistentClient at %s…", self._persist_directory)
+        t0 = time.monotonic()
         try:
-            return chromadb.PersistentClient(path=str(self._persist_directory))
+            client = chromadb.PersistentClient(path=str(self._persist_directory))
+            logger.info("ChromaDB ready in %.1f s.", time.monotonic() - t0)
+            return client
         except Exception as exc:  # pragma: no cover
             raise APIError("chroma_db_error", "ChromaDB could not be initialized.", 500) from exc
 
@@ -58,12 +64,15 @@ class EmbeddingService:
 
     @cached_property
     def _model(self):
-        """SentenceTransformer model — loaded on first access (~200-350 MB)."""
-        # Deferred import: torch + transformers are NOT loaded until here.
+        """SentenceTransformer model — loaded on first access (~200–350 MB)."""
         from sentence_transformers import SentenceTransformer
 
+        logger.info("Loading SentenceTransformer model '%s'…", self.model_name)
+        t0 = time.monotonic()
         try:
-            return SentenceTransformer(self.model_name)
+            model = SentenceTransformer(self.model_name)
+            logger.info("SentenceTransformer '%s' loaded in %.1f s.", self.model_name, time.monotonic() - t0)
+            return model
         except Exception as exc:  # pragma: no cover
             raise APIError("chroma_db_error", "SentenceTransformer model could not be loaded.", 500) from exc
 
