@@ -1,3 +1,13 @@
+"""
+DocumentService — orchestrates PDF ingestion into ChromaDB.
+
+The ``EmbeddingService`` dependency is **injected** rather than constructed
+internally, preventing a duplicate model-load when the container already
+holds the singleton instance.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +27,15 @@ class DocumentService:
     ) -> None:
         self.pdf_service = pdf_service or PDFService
         self.chunking_service = chunking_service or ChunkingService
-        self.embedding_service = embedding_service or EmbeddingService()
+        # NOTE: Do NOT fall back to ``EmbeddingService()`` here.
+        # The caller (container.document_service or a test) must inject a
+        # concrete instance.  This avoids a second SentenceTransformer load.
+        if embedding_service is None:
+            raise ValueError(
+                "DocumentService requires an EmbeddingService instance. "
+                "Use the ServiceContainer or inject one explicitly."
+            )
+        self.embedding_service: EmbeddingService = embedding_service
 
     def ingest_pdf(self, file_path: str | Path, filename: str) -> dict[str, Any]:
         extracted_text = self.pdf_service.extract_text(file_path)

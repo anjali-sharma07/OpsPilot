@@ -4,7 +4,9 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # Single worker: prevents a second Python process from loading
+    # SentenceTransformer a second time (~350 MB × 2 = OOM on free tier).
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1"
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
@@ -24,3 +26,13 @@ services:
         value: 100
       - key: UPLOAD_DIRECTORY
         value: ./uploads
+      # Prevent sentence-transformers from hitting the internet on every cold start.
+      # The model is cached in SENTENCE_TRANSFORMERS_HOME after the first build.
+      - key: SENTENCE_TRANSFORMERS_HOME
+        value: /opt/render/project/src/.cache/sentence_transformers
+      # Tell HuggingFace tokenizers to skip parallelism (saves ~30 MB overhead).
+      - key: TOKENIZERS_PARALLELISM
+        value: "false"
+      # Disable telemetry from chromadb to avoid background threads + RAM.
+      - key: ANONYMIZED_TELEMETRY
+        value: "false"

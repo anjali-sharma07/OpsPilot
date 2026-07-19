@@ -1,16 +1,28 @@
+"""
+OpsPilot FastAPI application entry point.
+
+Startup behaviour:
+  - All heavy services (SentenceTransformer, ChromaDB, Groq) are **not**
+    loaded here.  They are lazy-initialised inside the ServiceContainer and
+    pulled via FastAPI Depends() on first request.
+  - Database tables are created on the ``startup`` lifespan event so the
+    SQLAlchemy engine is only instantiated after the process is fully booted,
+    not at import time.
+"""
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.upload import router as upload_router
 from app.api.utils import APIError
-from app.core.config import Settings
-
-settings = Settings()
-
-app = FastAPI(title=settings.app_name)
+from app.core.config import settings
 
 
 ALLOWED_ORIGINS = [
@@ -19,6 +31,23 @@ ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Run startup tasks once the worker is fully booted."""
+    # Deferred DB initialisation — creates tables if they don't exist.
+    # Importing here (not at module level) keeps Base/engine out of the
+    # import path so they aren't created during test collection.
+    from app.database.database import Base, get_engine
+
+    Base.metadata.create_all(bind=get_engine())
+    yield
+    # Shutdown: nothing to clean up (SQLAlchemy engine manages its own pool).
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
 
 # CORS spec rule: allow_headers=["*"] is INVALID when allow_credentials=True.
 # Browsers (Chrome/Firefox) will silently drop Access-Control-Allow-Origin
@@ -62,6 +91,4 @@ async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
 
 @app.get("/")
 async def root():
-    return {
-        "message": f"Welcome to {settings.app_name}"
-    }
+    return {"message": f"Welcome to {settings.app_name}"}

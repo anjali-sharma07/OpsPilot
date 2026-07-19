@@ -1,3 +1,13 @@
+"""
+GroqService — wraps the Groq HTTP client.
+
+``api_key`` uses a sentinel default so callers can explicitly pass
+``api_key=None`` to create a keyless instance for testing, while the
+default (no argument) falls back to ``settings.groq_api_key``.
+"""
+
+from __future__ import annotations
+
 from typing import Any
 
 from groq import Groq
@@ -5,10 +15,15 @@ from groq import Groq
 from app.api.utils import APIError
 from app.core.config import settings
 
+# Sentinel: distinguishes "caller passed nothing" from "caller passed None".
+_UNSET: object = object()
+
 
 class GroqService:
-    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        self.api_key = api_key or settings.groq_api_key
+    def __init__(self, api_key: str | None = _UNSET, model: str | None = None) -> None:  # type: ignore[assignment]
+        # If api_key was explicitly supplied (even as None), use it as-is.
+        # If it was omitted entirely, fall back to settings.
+        self.api_key = settings.groq_api_key if api_key is _UNSET else api_key
         self.model = model or settings.groq_model
         self.client = Groq(api_key=self.api_key) if self.api_key else None
 

@@ -1,15 +1,37 @@
+"""
+FileService — handles file validation, saving, and PDF text extraction.
+
+``UPLOAD_DIR`` is exported as a ``Path`` object for backward-compatibility
+with tests that import it directly (e.g. ``test_upload_api.py``).  The
+directory is created on demand (only when a file is actually saved) rather
+than at module-import time.
+"""
+
+from __future__ import annotations
+
 import os
 import re
 from pathlib import Path
+
 from fastapi import UploadFile
 
 from app.api.utils import APIError
 from app.core.config import settings
 from app.services.pdf_service import PDFService
 
+# Exported for test compatibility — but mkdir is NOT called at import time.
 UPLOAD_DIR = Path(settings.upload_directory).expanduser()
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+
+
+def _ensure_upload_dir() -> Path:
+    """Ensure the upload directory exists and return it.
+
+    Called only when a file is being saved, not at module import.
+    """
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    return UPLOAD_DIR
 
 
 class FileService:
@@ -40,8 +62,9 @@ class FileService:
     @staticmethod
     def save_upload(file: UploadFile) -> str:
         filename = FileService.validate_pdf(file)
-        target_root = UPLOAD_DIR.resolve()
-        target_path = (UPLOAD_DIR / filename).resolve()
+        upload_dir = _ensure_upload_dir()       # mkdir only when saving
+        target_root = upload_dir.resolve()
+        target_path = (upload_dir / filename).resolve()
         if not str(target_path).startswith(str(target_root)):
             raise APIError("invalid_pdf", "Invalid upload path.", 400)
 
